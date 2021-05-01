@@ -17,17 +17,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
 
-    DB::transaction(function (){
-        DB::table('users')->delete();
-        $result = DB::table('users')->where('id', 3)->update(['email' => 'none@none.com']);
+    dump(factory(App\Comment::class, 3)->create());
 
-        if(!$result)
-        {
-            throw new \Exception('The transaction has failed', 500);
-        }
-    }, 5);
-
-    $result = DB::table('users')->select()->get();
-    dump($result);
     return view('welcome');
 });
