@@ -17,8 +17,21 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
 
-    return $result = DB::table('comments')->paginate('3'); //other statements like where clause are possible
+    //Add Fulltext index for search query
+    //$result = DB::statement('ALTER TABLE comments ADD FULLTEXT fulltext_index(content)'); // innoDB - MySQL >= 5.6
 
-    //dump($result->items());
-    //return view('welcome');
+    // Search query with Raw sql expressions
+    $result = DB::table('comments')
+        ->whereRaw("MATCH(content) AGAINST(? IN BOOLEAN MODE)", ['+repellendus -pariatur'])
+        ->get();
+
+
+    //Search query with Query Builder
+    $query = 'voluptatum';
+    $result = DB::table('comments')
+                ->where("content", 'like', "%{$query}%")
+                ->get();
+
+    dd($result);
+    return view('welcome');
 });
