@@ -17,35 +17,62 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
 
-    // Get All users
-    $users = DB::table('users')->get();
+    // Get rooms where price < 200
+    $result = DB::table('rooms')->where('price', '<', 200)->get();
 
-    // Get All users and only Email column
-    $usersEmail = DB::table('users')->pluck('email');
+    //Get where with 2 conditions (AND)
+    $result = DB::table('rooms')->where([['room_size', '3'], ['price', '<', '400']])->get();
 
-    //Get Email Value from by name
-    $user = DB::table('users')->where('name', 'Chelsey Grady')->value('email');
+    // Get where (OR)
+    $result = DB::table('rooms')
+        ->where('room_size', '3')
+        ->orWhere('price', '<', '100')
+        ->get();
 
-    // Get a single user by Id
-    $user = DB::table('users')->find(1);
+    //Nested Get where query with where orWhere
+    $result = DB::table('rooms')
+        ->where('price', '<', '400')
+        ->orWhere(function($query){
+            $query->where('room_size', '>', '1')
+                ->where('room_size', '<', '4');
+        })->get();
 
-    //Get comments and  only content column
-    $commentsContent = DB::table('comments')->select('content as comment_content')->get();
+    //Get data where between
+    $result = DB::table('rooms')
+                ->whereBetween('room_size', [1, 3])//whereNotBetween
+                ->get();
 
-    //Get distinct user_id who comments
-    $userIds = DB::table('comments')->select('user_id')->distinct()->get();
+    //Get data where id is not in given paramaters
+    $result = DB::table('rooms')
+            ->whereNotIn('id', [1,2,3])//whereIn
+            ->get();
+    //whereNull('column') whereNotNull
+    //whereDate('created_at', '2021-05-13')
+    //whereMonth('created_at', '5')
+    //whereDay('created_at', '27')
+    //whereYear('created_at', '2021')
+    //whereTime('created_at', '=', '12:25:10')
+    //whereColumn('column1', '>', 'column2')
+    //whereColumn([
+    //['first_name', '=', 'last_name'],
+    //['updated_at', '>', 'created_at']
+    //])
 
-    // Get the max user_id who comments
-    $result = DB::table('comments')->max('user_id');
+    $result = DB::table('users')
+            ->whereExists(function ($query){
+                $query->select('id')
+                    ->from('reservations')
+                    ->whereRaw('reservations.user_id = users.id')
+                    ->where('check_in', '=', '2021-04-25')
+                    ->limit(1);
+            })->get();
 
-    //Get the sum of userId who comments
-    $result = DB::table('comments')->sum('user_id');
+    $result = DB::table('users')
+            ->whereJsonContains('meta->skills', 'PHP 7')
+            //->where('meta->settings->site_language', 'fr')
+            ->get();
 
-    //Check if comment content exists in DB return boolean
-    $result = DB::table('comments')->where('content', 'content')->exists();
-    $result = DB::table('comments')->where('content', 'content')->doesntExist();
-
-    dump($usersEmail);
+    dump($result);
 
     return view('welcome');
 });
