@@ -17,20 +17,30 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
 
-    //Add Fulltext index for search query
-    //$result = DB::statement('ALTER TABLE comments ADD FULLTEXT fulltext_index(content)'); // innoDB - MySQL >= 5.6
-
-    // Search query with Raw sql expressions
+    // Get number_of_comments and users_name order by number_of_comments
+    // With selectRaw expressions
     $result = DB::table('comments')
-        ->whereRaw("MATCH(content) AGAINST(? IN BOOLEAN MODE)", ['+repellendus -pariatur'])
+            //->select(DB::raw('count(user_id) as number_of_comments, users.name'))
+            ->selectRaw('count(user_id) as number_of_comments, users.name')
+            ->join('users', 'users.id', '=' ,'comments.user_id')
+            ->groupBy('user_id')
+            ->orderByDesc('number_of_comments')
+            ->get();
+            //whereRaw / orWhereRaw
+            //havingRaw / orHavingRaw
+            //orderByRaw
+            //groupByRaw
+
+    //Get All comments order by updated_at (latest update)
+    $result = DB::table('comments')
+            ->orderByRaw('updated_at - created_at DESC')
+            ->get();
+
+    //Get All users order by name length count
+    $result = DB::table('users')
+        ->selectRaw('LENGTH(name) as name_length, name')
+        ->orderByRaw('LENGTH(name) DESC')
         ->get();
-
-
-    //Search query with Query Builder
-    $query = 'voluptatum';
-    $result = DB::table('comments')
-                ->where("content", 'like', "%{$query}%")
-                ->get();
 
     dd($result);
     return view('welcome');
