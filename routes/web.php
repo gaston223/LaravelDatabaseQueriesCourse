@@ -17,31 +17,57 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
 
-    // Get number_of_comments and users_name order by number_of_comments
-    // With selectRaw expressions
-    $result = DB::table('comments')
-            //->select(DB::raw('count(user_id) as number_of_comments, users.name'))
-            ->selectRaw('count(user_id) as number_of_comments, users.name')
-            ->join('users', 'users.id', '=' ,'comments.user_id')
-            ->groupBy('user_id')
-            ->orderByDesc('number_of_comments')
-            ->get();
-            //whereRaw / orWhereRaw
-            //havingRaw / orHavingRaw
-            //orderByRaw
-            //groupByRaw
-
-    //Get All comments order by updated_at (latest update)
-    $result = DB::table('comments')
-            ->orderByRaw('updated_at - created_at DESC')
-            ->get();
-
-    //Get All users order by name length count
     $result = DB::table('users')
-        ->selectRaw('LENGTH(name) as name_length, name')
-        ->orderByRaw('LENGTH(name) DESC')
-        ->get();
+            //->orderBy('name', 'desc')
+            //->latest() // created_at default
+            ->inRandomOrder() //->orderByRAw('RAND()')
+            ->first();
 
-    dd($result);
+    $result = DB::table('comments')
+                ->selectRaw('count(id) as number_of_5stars_comments, rating')
+                ->groupBy('rating')
+                ->where('rating', '=', 5)
+                ->get();
+
+    $result = DB::table('comments')
+                ->skip(5)
+                ->take(5)
+                ->get();
+
+    // When clause will execute only if $roomId is not null
+    $roomId = 1;
+    $result = DB::table('reservations')
+                ->when($roomId, function ($query, $roomId){
+                    return $query->where('room_id', $roomId);
+                })
+                ->get();
+
+    $sortBy = null;
+    $result = DB::table('rooms')
+                ->when($sortBy, function ($query, $sortBy){
+                    return $query->orderByDesc($sortBy);
+                }, function ($query) {
+                    return $query->orderBy('price'); //asc
+                })
+            ->get();
+
+    $result = DB::table('comments')->orderBy('id')->chunk(2, function ($comments){
+        foreach ($comments as $comment)
+        {
+            if($comment->id === 23) return false;
+        }
+    });
+
+    //Useful for administration tasks for save memory
+    $result = DB::table('comments')->orderBy('id')->chunkById(5, function ($comments){
+        foreach ($comments as $comment)
+        {
+            DB::table('comments')
+                ->where('id' , $comment->id)
+                ->update(['rating' => null]);
+        }
+    });
+
+    dump($result);
     return view('welcome');
 });
