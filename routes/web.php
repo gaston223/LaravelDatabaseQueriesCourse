@@ -17,57 +17,37 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
 
-    $result = DB::table('users')
-            //->orderBy('name', 'desc')
-            //->latest() // created_at default
-            ->inRandomOrder() //->orderByRAw('RAND()')
-            ->first();
-
-    $result = DB::table('comments')
-                ->selectRaw('count(id) as number_of_5stars_comments, rating')
-                ->groupBy('rating')
-                ->where('rating', '=', 5)
-                ->get();
-
-    $result = DB::table('comments')
-                ->skip(5)
-                ->take(5)
-                ->get();
-
-    // When clause will execute only if $roomId is not null
-    $roomId = 1;
+    //Get all reservations where rooms id and users id respect the given condition
     $result = DB::table('reservations')
-                ->when($roomId, function ($query, $roomId){
-                    return $query->where('room_id', $roomId);
-                })
-                ->get();
+        ->join('rooms', 'reservations.room_id', '=', 'rooms.id')
+        ->join('users', 'reservations.user_id', '=', 'users.id')
+        ->where('rooms.id', '>', 3)
+        ->where('users.id', '>', 1)
+        ->get();
 
-    $sortBy = null;
+    //@todo revision
     $result = DB::table('rooms')
-                ->when($sortBy, function ($query, $sortBy){
-                    return $query->orderByDesc($sortBy);
-                }, function ($query) {
-                    return $query->orderBy('price'); //asc
-                })
-            ->get();
+        ->leftJoin('reservations', 'room_id', '=', 'reservations.room_id')
+        ->leftJoin('cities', 'reservations.city_id', '=', 'cities.id')
+        ->selectRaw('room_size, cities.name, count(reservations.id) as reservations_count')
+        ->groupBy('room_size', 'cities.name')
+        ->orderByRaw('count(reservations.id) DESC')
+        ->get();
 
-    $result = DB::table('comments')->orderBy('id')->chunk(2, function ($comments){
-        foreach ($comments as $comment)
-        {
-            if($comment->id === 23) return false;
-        }
-    });
-
-    //Useful for administration tasks for save memory
-    $result = DB::table('comments')->orderBy('id')->chunkById(5, function ($comments){
-        foreach ($comments as $comment)
-        {
-            DB::table('comments')
-                ->where('id' , $comment->id)
-                ->update(['rating' => null]);
-        }
-    });
+    // Get number of reservations for cities and each room size
+    //Useful for generating reports
+    $result = DB::table('rooms')
+        ->crossJoin('cities')
+        ->leftJoin('reservations', function($join){
+            $join->on('rooms.id', '=', 'reservations.room_id')
+            ->on('cities.id', '=', 'reservations.city_id');
+        })
+        ->selectRaw('count(reservations.id) as reservations_count, room_size, cities.name')
+        ->groupBy('room_size', 'cities.name')
+        ->orderByRaw('rooms.room_size DESC')
+        ->get();
 
     dump($result);
+
     return view('welcome');
 });
